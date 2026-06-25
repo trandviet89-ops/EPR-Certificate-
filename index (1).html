@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Certificate Generator — EGL</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f2f5; color: #1a1a1a; }
+.page { max-width: 720px; margin: 0 auto; padding: 32px 20px; }
+.header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+.header img { height: 48px; }
+.header h1 { font-size: 20px; font-weight: 700; color: #1B4F72; }
+.header p { font-size: 13px; color: #777; }
+.card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card-title { font-size: 11px; font-weight: 700; color: #2980B9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #EBF5FB; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.full { grid-column: 1/-1; }
+label { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
+input, select, textarea { border: 1.5px solid #D5D8DC; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #1a1a1a; background: #FAFAFA; width: 100%; font-family: Arial, sans-serif; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #2980B9; background: white; }
+input[readonly] { background: #EBF5FB; color: #2471A3; font-weight: 600; }
+textarea { resize: vertical; min-height: 70px; }
+.lot-row { display: flex; gap: 8px; }
+.lot-row input { flex: 1; }
+.btn-lookup { background: #2980B9; color: white; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.upload-area { border: 2px dashed #AED6F1; border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; }
+.upload-area:hover { background: #EBF5FB; }
+.upload-area p { font-size: 12px; color: #888; margin-top: 4px; }
+.upload-preview { max-height: 60px; margin-top: 8px; display: none; }
+.btn-generate { width: 100%; background: #1B4F72; color: white; border: none; border-radius: 10px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+.btn-generate:hover { background: #154360; }
+.info-box { background: #EBF5FB; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.8; color: #2471A3; display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <img src="https://raw.githubusercontent.com/trandviet89-ops/EPR-Certificate-/main/Logo_EGL.png" onerror="this.style.display='none'" />
+    <div><h1>Certificate Generator</h1><p>Waste Diversion Credit Certificate</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">LOT Information</div>
+    <div class="field">
+      <label>LOT Number</label>
+      <div class="lot-row">
+        <input type="text" id="lot-input" placeholder="e.g. 5529" />
+        <button class="btn-lookup" onclick="lookupLOT()">Look up</button>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label>Material Code</label><input type="text" id="f-material-code" readonly /></div>
+      <div class="field"><label>Status</label><input type="text" id="f-status" readonly /></div>
+      <div class="field"><label>Raw Material Collection (Kg)</label><input type="text" id="f-raw" readonly /></div>
+      <div class="field"><label>Period</label><input type="text" id="f-period" readonly /></div>
+      <div class="field full" id="sorted-display" style="display:none">
+        <label>Sorted Output Detail</label>
+        <div class="info-box" id="sorted-list" style="display:block"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Customer Information</div>
+    <div class="grid">
+      <div class="field full"><label>Company Name</label><input type="text" id="c-name" /></div>
+      <div class="field full"><label>Address</label><textarea id="c-address"></textarea></div>
+      <div class="field"><label>Country</label><input type="text" id="c-country" /></div>
+      <div class="field"><label>Type of Audit</label><input type="text" id="c-audit" /></div>
+      <div class="field"><label>Chain of Custody</label><input type="text" id="c-custody" value="LOT Traceability" /></div>
+      <div class="field"><label>Input Material Code</label><input type="text" id="c-input-mat" /></div>
+      <div class="field"><label>Process</label><input type="text" id="c-process" /></div>
+      <div class="field"><label>Product</label><input type="text" id="c-product" /></div>
+      <div class="field"><label>Source</label><input type="text" id="c-source" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Recycling Location</div>
+    <div class="field">
+      <label>Recycled at</label>
+      <select id="c-recycling-at">
+        <option value="">— Select —</option>
+        <option>Moc An Chau Corporation</option>
+        <option>Thanh Tung 2 Co., Ltd</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Certificate Period</div>
+    <div class="grid">
+      <div class="field"><label>From Date</label><input type="date" id="c-date-from" /></div>
+      <div class="field"><label>To Date</label><input type="date" id="c-date-to" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Audit Statement</div>
+    <div class="grid">
+      <div class="field full"><label>Audit Statement</label><textarea id="a-statement">Verification and audit of the recycling process, management system, and traceability requirements were conducted by Evergreen Labs Vietnam, in accordance with Vietnam's EPR regulatory framework (Law 72/2020/QH14).</textarea></div>
+      <div class="field"><label>Audit Standard (Org)</label><input type="text" id="a-std-org" /></div>
+      <div class="field"><label>Audit Standard (Full Name)</label><input type="text" id="a-std-name" /></div>
+      <div class="field"><label>Decree / Reference</label><input type="text" id="a-decree" /></div>
+      <div class="field"><label>Version & Eff. Date</label><input type="text" id="a-version" /></div>
+      <div class="field"><label>Reviewed By</label><input type="text" id="a-reviewed-by" /></div>
+      <div class="field"><label>Audited By</label><input type="text" id="a-audited-by" /></div>
+      <div class="field"><label>Company Name (Auditor)</label><input type="text" id="a-company-name" /></div>
+      <div class="field"><label>PRC No.</label><input type="text" id="a-prc" /></div>
+      <div class="field"><label>BOA / PTR</label><input type="text" id="a-boa" /></div>
+      <div class="field full"><label>Supply Chain Facilitation</label><textarea id="a-supply">The end-to-end supply chain for the diverted plastic covered under this certificate was facilitated by Evergreen Labs Vietnam, including coordination of collection, aggregation, and diversion activities.</textarea></div>
+      <div class="field"><label>Credit Facilitator Name</label><input type="text" id="a-facilitator" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Logos & Signatures</div>
+    <div class="grid">
+      <div class="field"><label>Customer Logo (top left)</label>
+        <div class="upload-area" onclick="document.getElementById('up-customer').click()"><p>Click to upload</p><img id="pv-customer" class="upload-preview" /></div>
+        <input type="file" id="up-customer" accept="image/*" style="display:none" onchange="storeImg(this,'customerLogo','pv-customer')" />
+      </div>
+      <div class="field"><label>EGL Logo (top right)</label>
+        <div class="upload-area" onclick="document.getElementById('up-egl').click()"><p>Click to upload</p><img id="pv-egl" class="upload-preview" /></div>
+        <input type="file" id="up-egl" accept="image/*" style="display:none" onchange="storeImg(this,'eglLogo','pv-egl')" />
+      </div>
+      <div class="field"><label>Auditor Signature</label>
+        <div class="upload-area" onclick="document.getElementById('up-auditor-sign').click()"><p>Click to upload</p><img id="pv-auditor-sign" class="upload-preview" /></div>
+        <input type="file" id="up-auditor-sign" accept="image/*" style="display:none" onchange="storeImg(this,'auditorSign','pv-auditor-sign')" />
+      </div>
+      <div class="field"><label>Auditor Logo (RSM)</label>
+        <div class="upload-area" onclick="document.getElementById('up-auditor-stamp').click()"><p>Click to upload</p><img id="pv-auditor-stamp" class="upload-preview" /></div>
+        <input type="file" id="up-auditor-stamp" accept="image/*" style="display:none" onchange="storeImg(this,'auditorStamp','pv-auditor-stamp')" />
+      </div>
+      <div class="field"><label>Facilitator Signature</label>
+        <div class="upload-area" onclick="document.getElementById('up-facilitator-sign').click()"><p>Click to upload</p><img id="pv-facilitator-sign" class="upload-preview" /></div>
+        <input type="file" id="up-facilitator-sign" accept="image/*" style="display:none" onchange="storeImg(this,'facilitatorSign','pv-facilitator-sign')" />
+      </div>
+      <div class="field"><label>EGL Logo nhỏ</label>
+        <div class="upload-area" onclick="document.getElementById('up-egl-small').click()"><p>Click to upload</p><img id="pv-egl-small" class="upload-preview" /></div>
+        <input type="file" id="up-egl-small" accept="image/*" style="display:none" onchange="storeImg(this,'eglSmall','pv-egl-small')" />
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-generate" onclick="generateCertificate()">Generate Certificate</button>
+</div>
+
+<script>
+const TOKEN = "patZcZAD3MACM36HR.198c1644e4cb10fdd84af1dd4d4b06171fc3cdab959f33c0cde2bee13ee30dfe";
+const BASE_ID = "appL9vHNmqKnVBzjR";
+const imgs = {};
+let sortedOutputData = [];
+let lotFields = {};
+
+function storeImg(input, key, previewId) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imgs[key] = e.target.result;
+    const img = document.getElementById(previewId);
+    img.src = e.target.result; img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function lookupLOT() {
+  const lotNo = document.getElementById('lot-input').value.trim();
+  if(!lotNo) return;
+  const btn = document.querySelector('.btn-lookup');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const formula = encodeURIComponent(`{LOT No.}="${lotNo}"`);
+    const r = await fetch(`https://api.airtable.com/v0/${BASE_ID}/LOT%20Registry?filterByFormula=${formula}`, {
+      headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+    const data = await r.json();
+    if(!data.records?.length) { alert('LOT not found'); return; }
+    const rec = data.records[0];
+    lotFields = rec.fields;
+    document.getElementById('f-material-code').value = lotFields['Material Code'] || '';
+    document.getElementById('f-status').value = lotFields['Status'] || '';
+    document.getElementById('f-raw').value = lotFields['Raw Material Collection (Kg)'] || 0;
+    const d = lotFields['Created Date'] ? new Date(lotFields['Created Date']) : new Date();
+    document.getElementById('f-period').value = d.toLocaleString('en-US', { month:'long', year:'numeric' });
+    document.getElementById('c-input-mat').value = lotFields['Material Code'] || '';
+    const ids = lotFields['Sorting Output Detail'] || [];
+    await fetchSortingOutput(ids);
+    btn.textContent = '✓ Found';
+  } catch(e) { alert('Error: ' + e.message); }
+  finally { setTimeout(() => { btn.textContent = 'Look up'; btn.disabled = false; }, 2000); }
+}
+
+async function fetchSortingOutput(ids) {
+  if(!ids.length) return;
+  sortedOutputData = [];
+  const sortingRecs = await Promise.all(ids.map(id =>
+    fetch(`https://api.airtable.com/v0/${BASE_ID}/Sorting%20Output%20Detail/${id}`, {
+      headers: { "Authorization": `Bearer ${TOKEN}` }
+    }).then(r => r.json())
+  ));
+  const pelletRecs = await fetch(`https://api.airtable.com/v0/${BASE_ID}/Pelletizing%20Statistics%20Report`, {
+    headers: { "Authorization": `Bearer ${TOKEN}` }
+  }).then(r => r.json());
+  const pelletMap = {};
+  for(const prec of (pelletRecs.records || [])) {
+    for(const soId of (prec.fields['Sorting Output (link)'] || [])) {
+      pelletMap[soId] = (pelletMap[soId] || 0) + (prec.fields['Pelletizing Weight (Kg)'] || 0);
+    }
+  }
+  for(const rec of sortingRecs) {
+    sortedOutputData.push({
+      id: rec.id,
+      lotOut: rec.fields['LOT No. After Sorting'] || rec.fields['LOT No.'] || '—',
+      matCode: rec.fields['Sorted Material Code'] || '—',
+      sortingWeight: rec.fields['Weight (Kg)'] || 0,
+      pelletWeight: pelletMap[rec.id] || 0
+    });
+  }
+  if(sortedOutputData.length) {
+    document.getElementById('sorted-display').style.display = 'block';
+    document.getElementById('sorted-list').innerHTML = sortedOutputData.map(d =>
+      `<b>LOT No. After Sorting:</b> ${d.lotOut} | <b>Code:</b> ${d.matCode} | <b>Sorting:</b> ${d.sortingWeight} Kg | <b>Pelletizing:</b> ${d.pelletWeight} Kg`
+    ).join('<br>');
+  }
+}
+
+function generateCertificate() {
+  const lotNo = document.getElementById('lot-input').value.trim();
+  if(!lotNo) { alert('Look up a LOT first'); return; }
+  const data = {
+    lotNo,
+    period: document.getElementById('f-period').value,
+    raw: parseFloat(lotFields['Raw Material Collection (Kg)']) || 0,
+    matCode: lotFields['Material Code'] || '',
+    cName: document.getElementById('c-name').value,
+    cAddress: document.getElementById('c-address').value,
+    cCountry: document.getElementById('c-country').value,
+    cAudit: document.getElementById('c-audit').value,
+    cCustody: document.getElementById('c-custody').value,
+    cInputMat: document.getElementById('c-input-mat').value,
+    cProcess: document.getElementById('c-process').value,
+    cProduct: document.getElementById('c-product').value,
+    cSource: document.getElementById('c-source').value,
+    cRecyclingAt: document.getElementById('c-recycling-at').value,
+    cDateFrom: document.getElementById('c-date-from').value,
+    cDateTo: document.getElementById('c-date-to').value,
+    aStatement: document.getElementById('a-statement').value,
+    aStdOrg: document.getElementById('a-std-org').value,
+    aStdName: document.getElementById('a-std-name').value,
+    aDecree: document.getElementById('a-decree').value,
+    aVersion: document.getElementById('a-version').value,
+    aReviewedBy: document.getElementById('a-reviewed-by').value,
+    aAuditedBy: document.getElementById('a-audited-by').value,
+    aCompanyName: document.getElementById('a-company-name').value,
+    aPrc: document.getElementById('a-prc').value,
+    aBoa: document.getElementById('a-boa').value,
+    aSupply: document.getElementById('a-supply').value,
+    aFacilitator: document.getElementById('a-facilitator').value,
+    sortedOutputData,
+    imgs
+  };
+  sessionStorage.setItem('certData', JSON.stringify(data));
+  window.open('cert.html', '_blank');
+}
+</script>
+</body>
+</html>
